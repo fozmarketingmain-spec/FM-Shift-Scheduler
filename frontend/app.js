@@ -108,7 +108,6 @@ async function openRequestModal() {
   const balances = await apiFetch('/api/balances');
   const otherEmployees = employees.filter((e) => e.id !== me.id);
   const swapOptions = otherEmployees.map((e) => `<option value="${e.id}">${e.name}</option>`).join('');
-  const assigneeOptions = otherEmployees.map((e) => `<option value="${e.id}">${e.name}</option>`).join('');
 
   const extraOk = balances.extraOffRemaining !== null && balances.extraOffRemaining > 0;
   const replOk = balances.replacementOffRemaining > 0;
@@ -142,10 +141,7 @@ async function openRequestModal() {
         <label id="dateLabel">日期</label>
         <input type="date" id="reqDate">
       </div>
-      <div id="assigneeField" class="field" style="display:none;">
-        <label>代班人</label>
-        <select id="assigneeId">${assigneeOptions}</select>
-      </div>
+      <p id="assigneeNote" class="field" style="display:none;font-size:12.5px;color:var(--ink-soft);">代班人由 Shellie 批准时指定,这里不用选。</p>
       <div id="swapField" class="field" style="display:none;">
         <label>换班对象</label>
         <select id="swapWith">${swapOptions}</select>
@@ -177,7 +173,7 @@ const REASON_REQUIRED_TYPES = ['LEAVE', 'CARRY_FORWARD', 'SWAP', 'SWAP_OFF'];
 function toggleRequestFields() {
   const type = document.getElementById('reqType').value;
   document.getElementById('leaveTypeField').style.display = type === 'LEAVE' ? 'block' : 'none';
-  document.getElementById('assigneeField').style.display = ['OFF', 'REPLACEMENT_OFF'].includes(type) ? 'block' : 'none';
+  document.getElementById('assigneeNote').style.display = ['OFF', 'REPLACEMENT_OFF'].includes(type) ? 'block' : 'none';
   document.getElementById('swapField').style.display = type === 'SWAP' ? 'block' : 'none';
   document.getElementById('swapOffField').style.display = type === 'SWAP_OFF' ? 'block' : 'none';
   document.getElementById('carryDaysField').style.display = type === 'CARRY_FORWARD' ? 'block' : 'none';
@@ -210,9 +206,6 @@ async function submitRequest() {
   if (request_type === 'SWAP_OFF') {
     body.swap_date = document.getElementById('swapOffDate').value;
     if (!body.swap_date) { alert('请选择要换到的新日期'); return; }
-  }
-  if (request_type === 'OFF' || request_type === 'REPLACEMENT_OFF') {
-    body.assignee_id = Number(document.getElementById('assigneeId').value);
   }
   if (request_type === 'CARRY_FORWARD') {
     body.carry_days = Number(document.getElementById('carryDays').value);

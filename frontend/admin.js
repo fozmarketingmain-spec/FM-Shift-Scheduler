@@ -2,6 +2,7 @@ const appEl = document.getElementById('app');
 const userAreaEl = document.getElementById('userArea');
 
 let currentFilter = 'pending';
+let employees = [];
 
 async function main() {
   await handleSlackRedirectIfPresent();
@@ -32,6 +33,7 @@ async function main() {
       <button class="btn ghost" onclick="logout()">登出</button>
     </div>`;
 
+  employees = await apiFetch('/api/employees?active=1');
   await renderRequests();
 }
 
@@ -71,7 +73,7 @@ async function renderRequests() {
         ${
           r.status === 'pending'
             ? `<div class="actions">
-                <button class="btn approve" onclick="decide(${r.id}, 'approve')">批准</button>
+                <button class="btn approve" onclick="startApprove(${r.id}, '${r.request_type}', ${r.employee_id})">批准</button>
                 <button class="btn reject" onclick="decide(${r.id}, 'reject')">拒绝</button>
               </div>`
             : ''
@@ -92,8 +94,51 @@ function setFilter(status) {
   renderRequests();
 }
 
-async function decide(id, action) {
-  await apiFetch(`/api/requests/${id}/${action}`, { method: 'POST', body: JSON.stringify({}) });
+// Off Day / Replacement Off need an assignee picked before they can be approved.
+function startApprove(id, requestType, requesterId) {
+  if (!['OFF', 'REPLACEMENT_OFF'].includes(requestType)) {
+    decide(id, 'approve');
+    return;
+  }
+  const options = employees
+    .filter((e) => e.id !== requesterId)
+    .map((e) => `<option value="${e.id}">${e.name}</option>`)
+    .join('');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>指定代班人</h3>
+      <div class="field">
+        <label>谁来代班?</label>
+        <select id="approveAssignee">${options}</select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" onclick="closeModal()">取消</button>
+        <button class="btn primary" onclick="confirmApprove(${id})">确认批准</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.id = 'modalOverlay';
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay')?.remove();
+}
+
+async function confirmApprove(id) {
+  const assignee_id = Number(document.getElementById('approveAssignee').value);
+  closeModal();
+  await decide(id, 'approve', { assignee_id });
+}
+
+async function decide(id, action, extraBody) {
+  const res = await apiFetch(`/api/requests/${id}/${action}`, { method: 'POST', body: JSON.stringify(extraBody || {}) });
+  if (res.error) {
+    alert(res.error);
+    return;
+  }
   await renderRequests();
 }
 
