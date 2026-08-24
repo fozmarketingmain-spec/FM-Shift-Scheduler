@@ -3,6 +3,7 @@ const userAreaEl = document.getElementById('userArea');
 
 let viewDate = new Date(); // month currently displayed
 let employees = [];
+let currentSchedule = {};
 
 async function main() {
   await handleSlackRedirectIfPresent();
@@ -46,6 +47,7 @@ async function renderCalendar() {
     apiFetch(`/api/holidays?month=${monthKey}`),
   ]);
   const me = getSession().me;
+  currentSchedule = schedule;
 
   const firstOfMonth = new Date(year, month, 1);
   const startWeekday = (firstOfMonth.getDay() + 6) % 7; // Monday = 0
@@ -64,7 +66,10 @@ async function renderCalendar() {
 
     cells += `
       <div class="day-cell${holidayName ? ' holiday' : ''}" ${holidayName ? `title="${holidayName}"` : ''}>
-        <div class="day-num">${d}</div>
+        <div class="day-cell-head">
+          <div class="day-num">${d}</div>
+          ${me.role === 'ADMIN' ? `<button class="edit-btn" onclick="openDayEditModal('${dateStr}')" title="编辑这一天">✎</button>` : ''}
+        </div>
         ${holidayName ? `<span class="ph-badge">🎉 ${holidayName}</span>` : ''}
         ${day.morning.length ? `<span class="shift-line morning">早 ${line(day.morning)}</span>` : ''}
         ${day.night.length ? `<span class="shift-line night">晚 ${line(day.night)}</span>` : ''}
@@ -204,6 +209,84 @@ async function submitRequest() {
     closeModal();
   } else {
     alert(res.error || '提交失败');
+  }
+}
+
+// ---- Admin: direct per-cell editing --------------------------------------
+
+const DAY_CATEGORY_OPTIONS = [
+  ['', '(无排班)'],
+  ['shift:Morning', '早班 Morning'],
+  ['shift:Night', '晚班 Night'],
+  ['off:Weekly', 'Off: Weekly'],
+  ['off:Monthly', 'Off: Monthly'],
+  ['off:AL', 'Off: AL'],
+  ['off:Extra', 'Off: Extra'],
+  ['off:Replacement', 'Off: Replacement'],
+  ['off:Other Leave', 'Off: Other'],
+];
+
+function currentCategoryFor(day, employeeId) {
+  if (day.morning.some((p) => p.id === employeeId)) return 'shift:Morning';
+  if (day.night.some((p) => p.id === employeeId)) return 'shift:Night';
+  const offEntry = day.off.find((o) => o.id === employeeId);
+  if (offEntry) return `off:${offEntry.type.includes('固定') ? 'Weekly' : offEntry.type}`;
+  return '';
+}
+
+function openDayEditModal(dateStr) {
+  const day = currentSchedule[dateStr] || { morning: [], night: [], off: [] };
+
+  const rows = employees
+    .map((e) => {
+      const current = currentCategoryFor(day, e.id);
+      const options = DAY_CATEGORY_OPTIONS.map(
+        ([val, label]) => `<option value="${val}" ${val === current ? 'selected' : ''}>${label}</option>`
+      ).join('');
+      return `
+        <div class="field">
+          <label>${e.name}</label>
+          <select id="dayEdit-${e.id}">${options}</select>
+        </div>`;
+    })
+    .join('');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>编辑 ${dateStr}</h3>
+      ${rows}
+      <div class="modal-actions">
+        <button class="btn ghost" onclick="closeModal()">取消</button>
+        <button class="btn primary" onclick="saveDayEdit('${dateStr}')">保存</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.id = 'modalOverlay';
+}
+
+async function saveDayEdit(dateStr) {
+  const morning = [];
+  const night = [];
+  const off = [];
+  for (const e of employees) {
+    const val = document.getElementById(`dayEdit-${e.id}`).value;
+    if (!val) continue;
+    const [kind, type] = val.split(':');
+    if (kind === 'shift' && type === 'Morning') morning.push(e.id);
+    else if (kind === 'shift' && type === 'Night') night.push(e.id);
+    else if (kind === 'off') off.push({ employeeId: e.id, type });
+  }
+  const res = await apiFetch('/api/day', {
+    method: 'POST',
+    body: JSON.stringify({ date: dateStr, morning, night, off }),
+  });
+  if (res.ok) {
+    closeModal();
+    await renderCalendar();
+  } else {
+    alert(res.error || '保存失败');
   }
 }
 

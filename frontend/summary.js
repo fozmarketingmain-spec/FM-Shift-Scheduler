@@ -39,17 +39,24 @@ function monthKey() {
 
 async function renderSummary() {
   const me = getSession().me;
+  const isAdmin = me.role === 'ADMIN';
   const mk = monthKey();
   const rows = await apiFetch(`/api/summary?month=${mk}`);
+
+  const cell = (value, employeeId, field) => {
+    if (value === null || value === undefined) return `<td>-</td>`;
+    if (!isAdmin) return `<td>${value}</td>`;
+    return `<td class="editable" onclick="startEditCell(this, ${employeeId}, '${field}')">${value}<span class="edit-icon">✎</span></td>`;
+  };
 
   const offRows = rows
     .map(
       (r) => `
       <tr>
         <td>${r.name}</td>
-        <td>${r.monthlyOff ? r.monthlyOff.total : '-'}</td>
-        <td>${r.monthlyOff ? r.monthlyOff.used : '-'}</td>
-        <td>${r.monthlyOff ? r.monthlyOff.carryForward : '-'}</td>
+        ${cell(r.monthlyOff?.total, r.employeeId, 'monthlyOff_total')}
+        ${cell(r.monthlyOff?.used, r.employeeId, 'monthlyOff_used')}
+        ${cell(r.monthlyOff?.carryForward, r.employeeId, 'monthlyOff_carryForward')}
       </tr>`
     )
     .join('');
@@ -59,9 +66,9 @@ async function renderSummary() {
       (r) => `
       <tr>
         <td>${r.name}</td>
-        <td>${r.replacement.total}</td>
-        <td>${r.replacement.settle}</td>
-        <td>${r.replacement.carryForward}</td>
+        ${cell(r.replacement.total, r.employeeId, 'replacement_total')}
+        ${cell(r.replacement.settle, r.employeeId, 'replacement_settle')}
+        ${cell(r.replacement.carryForward, r.employeeId, 'replacement_carryForward')}
       </tr>`
     )
     .join('');
@@ -71,8 +78,8 @@ async function renderSummary() {
       (r) => `
       <tr>
         <td>${r.name}</td>
-        <td>${r.ot.ph}</td>
-        <td>${r.ot.normal}</td>
+        ${cell(r.ot.ph, r.employeeId, 'ot_ph')}
+        ${cell(r.ot.normal, r.employeeId, 'ot_normal')}
       </tr>`
     )
     .join('');
@@ -137,6 +144,34 @@ async function renderSummary() {
 function changeMonth(delta) {
   viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + delta, 1);
   renderSummary();
+}
+
+function startEditCell(td, employeeId, field) {
+  if (td.querySelector('input')) return;
+  const original = td.childNodes[0].textContent.trim();
+  td.dataset.original = original;
+  td.innerHTML = `<input type="number" step="0.5" value="${original}">`;
+  const input = td.querySelector('input');
+  input.focus();
+  input.select();
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') input.blur();
+    if (e.key === 'Escape') renderSummary();
+  };
+  input.onblur = () => saveCell(td, employeeId, field, input.value);
+}
+
+async function saveCell(td, employeeId, field, newValue) {
+  if (newValue === '' || isNaN(Number(newValue))) {
+    await renderSummary();
+    return;
+  }
+  const res = await apiFetch('/api/summary/override', {
+    method: 'POST',
+    body: JSON.stringify({ employee_id: employeeId, month: monthKey(), field, value: Number(newValue) }),
+  });
+  if (!res.ok) alert(res.error || '保存失败');
+  await renderSummary();
 }
 
 async function submitOt() {
