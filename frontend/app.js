@@ -229,24 +229,32 @@ async function submitRequest() {
 
 // ---- Admin: direct per-cell editing --------------------------------------
 
-const DAY_CATEGORY_OPTIONS = [
-  ['', '(无排班)'],
-  ['shift:Morning', '早班 Morning'],
-  ['shift:Night', '晚班 Night'],
-  ['off:Weekly', 'Off: Weekly'],
-  ['off:Monthly', 'Off: Monthly'],
-  ['off:AL', 'Off: AL'],
-  ['off:Extra', 'Off: Extra'],
-  ['off:Replacement', 'Off: Replacement'],
-  ['off:Other Leave', 'Off: Other'],
+const OFF_SUBTYPES = [
+  ['AL', 'AL'],
+  ['MC', 'MC'],
+  ['Monthly', 'Monthly'],
+  ['Weekly', 'Weekly'],
+  ['Replacement', 'Compensation'],
 ];
 
 function currentCategoryFor(day, employeeId) {
-  if (day.morning.some((p) => p.id === employeeId)) return 'shift:Morning';
-  if (day.night.some((p) => p.id === employeeId)) return 'shift:Night';
+  if (day.morning.some((p) => p.id === employeeId)) return 'Morning';
+  if (day.night.some((p) => p.id === employeeId)) return 'Night';
   const offEntry = day.off.find((o) => o.id === employeeId);
-  if (offEntry) return `off:${offEntry.type.includes('固定') ? 'Weekly' : offEntry.type}`;
+  if (offEntry) return 'Off';
   return '';
+}
+
+function currentOffSubtypeFor(day, employeeId) {
+  const offEntry = day.off.find((o) => o.id === employeeId);
+  if (!offEntry) return 'AL';
+  const type = offEntry.type.includes('固定') ? 'Weekly' : offEntry.type;
+  return OFF_SUBTYPES.some(([v]) => v === type) ? type : 'AL';
+}
+
+function toggleDayOffType(employeeId) {
+  const cat = document.getElementById(`dayEditCat-${employeeId}`).value;
+  document.getElementById(`dayEditOffType-${employeeId}`).style.display = cat === 'Off' ? 'block' : 'none';
 }
 
 function openDayEditModal(dateStr) {
@@ -255,13 +263,21 @@ function openDayEditModal(dateStr) {
   const rows = employees
     .map((e) => {
       const current = currentCategoryFor(day, e.id);
-      const options = DAY_CATEGORY_OPTIONS.map(
-        ([val, label]) => `<option value="${val}" ${val === current ? 'selected' : ''}>${label}</option>`
+      const currentOffType = currentOffSubtypeFor(day, e.id);
+      const catOptions = ['', 'Morning', 'Night', 'Off']
+        .map((v) => {
+          const label = { '': '(无排班)', Morning: '早班 Morning', Night: '晚班 Night', Off: 'Off' }[v];
+          return `<option value="${v}" ${v === current ? 'selected' : ''}>${label}</option>`;
+        })
+        .join('');
+      const offTypeOptions = OFF_SUBTYPES.map(
+        ([v, label]) => `<option value="${v}" ${v === currentOffType ? 'selected' : ''}>${label}</option>`
       ).join('');
       return `
         <div class="field">
           <label>${e.name}</label>
-          <select id="dayEdit-${e.id}">${options}</select>
+          <select id="dayEditCat-${e.id}" onchange="toggleDayOffType(${e.id})">${catOptions}</select>
+          <select id="dayEditOffType-${e.id}" style="margin-top:6px;display:${current === 'Off' ? 'block' : 'none'};">${offTypeOptions}</select>
         </div>`;
     })
     .join('');
@@ -286,12 +302,13 @@ async function saveDayEdit(dateStr) {
   const night = [];
   const off = [];
   for (const e of employees) {
-    const val = document.getElementById(`dayEdit-${e.id}`).value;
-    if (!val) continue;
-    const [kind, type] = val.split(':');
-    if (kind === 'shift' && type === 'Morning') morning.push(e.id);
-    else if (kind === 'shift' && type === 'Night') night.push(e.id);
-    else if (kind === 'off') off.push({ employeeId: e.id, type });
+    const cat = document.getElementById(`dayEditCat-${e.id}`).value;
+    if (cat === 'Morning') morning.push(e.id);
+    else if (cat === 'Night') night.push(e.id);
+    else if (cat === 'Off') {
+      const type = document.getElementById(`dayEditOffType-${e.id}`).value;
+      off.push({ employeeId: e.id, type });
+    }
   }
   const res = await apiFetch('/api/day', {
     method: 'POST',
