@@ -34,6 +34,7 @@ function renderUserArea(me) {
       <span>${me.name}${me.role === 'ADMIN' ? ' · Admin' : ''}</span>
       ${me.role === 'ADMIN' ? '<a href="admin.html" style="color:inherit;">审批后台</a>' : ''}
       <a href="summary.html" style="color:inherit;">Summary</a>
+      ${me.role === 'ADMIN' ? '<a href="employees.html" style="color:inherit;">员工管理</a>' : ''}
       <button class="btn ghost" onclick="logout()">登出</button>
     </div>`;
 }
