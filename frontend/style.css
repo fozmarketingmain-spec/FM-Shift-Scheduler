@@ -148,18 +148,16 @@ h1, h2, h3, .brand {
 
 .day-cell-head { display: flex; align-items: center; justify-content: space-between; }
 .edit-btn {
-  border: none;
-  background: transparent;
+  border: 1px solid var(--line);
+  background: var(--surface);
   color: var(--ink-soft);
   cursor: pointer;
-  font-size: 12px;
-  padding: 2px 4px;
-  border-radius: 4px;
-  opacity: 0;
-  transition: opacity 0.15s;
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 5px;
+  border-radius: 5px;
 }
-.day-cell:hover .edit-btn { opacity: 1; }
-.edit-btn:hover { background: var(--bg); color: var(--ink); }
+.edit-btn:hover { background: var(--bg); color: var(--ink); border-color: var(--ink-soft); }
 
 .day-cell-head {
   display: flex;
@@ -320,9 +318,7 @@ h1, h2, h3, .brand {
   font-size: 10px;
   color: var(--ink-soft);
   margin-left: 6px;
-  opacity: 0;
 }
-.summary-table td.editable:hover .edit-icon { opacity: 1; }
 .summary-table td input {
   width: 64px;
   border: 1px solid var(--ink);
