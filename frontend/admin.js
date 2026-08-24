@@ -32,7 +32,7 @@ async function main() {
   await renderRequests();
 }
 
-const typeLabel = { AL: 'AL 年假', OFF: 'Off Day', SWAP: '换班' };
+const typeLabel = { AL: 'AL 年假', OFF: 'Off Day (Extra)', REPLACEMENT_OFF: 'Replacement Off', SWAP: '换班', SWAP_OFF: '换 Off Day', CARRY_FORWARD: '延后 Extra Off' };
 const statusLabel = { pending: '待处理', approved: '已批准', rejected: '已拒绝' };
 
 async function renderRequests() {
@@ -57,7 +57,10 @@ async function renderRequests() {
           </div>
           <div class="meta">
             日期: ${r.request_date}
-            ${r.request_type === 'SWAP' ? ` → 与 ${r.swap_with_name} 的 ${r.swap_date} 对调` : ''}
+            ${r.request_type === 'SWAP' ? ` → 与 ${r.swap_with_name} 对调` : ''}
+            ${r.request_type === 'SWAP_OFF' ? ` → 换到 ${r.swap_date}` : ''}
+            ${['OFF', 'REPLACEMENT_OFF'].includes(r.request_type) && r.assignee_name ? ` · 代班人: ${r.assignee_name}` : ''}
+            ${r.request_type === 'CARRY_FORWARD' ? ` · 延后天数: ${r.carry_days}` : ''}
             ${r.reason ? ` · 原因: ${r.reason}` : ''}
           </div>
         </div>
