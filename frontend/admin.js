@@ -65,7 +65,7 @@ async function renderRequests() {
             日期: ${r.request_date}
             ${r.request_type === 'SWAP' ? ` → 与 ${r.swap_with_name} 对调` : ''}
             ${r.request_type === 'SWAP_OFF' ? ` → 换到 ${r.swap_date}` : ''}
-            ${['OFF', 'REPLACEMENT_OFF'].includes(r.request_type) && r.assignee_name ? ` · 代班人: ${r.assignee_name}` : ''}
+            ${['AL', 'LEAVE', 'OFF', 'REPLACEMENT_OFF'].includes(r.request_type) && r.assignee_name ? ` · 代班人: ${r.assignee_name}` : ''}
             ${r.request_type === 'CARRY_FORWARD' ? ` · 延后天数: ${r.carry_days}` : ''}
             ${r.reason ? ` · 原因: ${r.reason}` : ''}
           </div>
@@ -96,7 +96,7 @@ function setFilter(status) {
 
 // Off Day / Replacement Off need an assignee picked before they can be approved.
 function startApprove(id, requestType, requesterId) {
-  if (!['OFF', 'REPLACEMENT_OFF'].includes(requestType)) {
+  if (!['AL', 'LEAVE', 'OFF', 'REPLACEMENT_OFF'].includes(requestType)) {
     decide(id, 'approve');
     return;
   }

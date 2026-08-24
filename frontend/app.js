@@ -173,7 +173,7 @@ const REASON_REQUIRED_TYPES = ['LEAVE', 'CARRY_FORWARD', 'SWAP', 'SWAP_OFF'];
 function toggleRequestFields() {
   const type = document.getElementById('reqType').value;
   document.getElementById('leaveTypeField').style.display = type === 'LEAVE' ? 'block' : 'none';
-  document.getElementById('assigneeNote').style.display = ['OFF', 'REPLACEMENT_OFF'].includes(type) ? 'block' : 'none';
+  document.getElementById('assigneeNote').style.display = ['LEAVE', 'OFF', 'REPLACEMENT_OFF'].includes(type) ? 'block' : 'none';
   document.getElementById('swapField').style.display = type === 'SWAP' ? 'block' : 'none';
   document.getElementById('swapOffField').style.display = type === 'SWAP_OFF' ? 'block' : 'none';
   document.getElementById('carryDaysField').style.display = type === 'CARRY_FORWARD' ? 'block' : 'none';
