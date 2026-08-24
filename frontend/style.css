@@ -56,6 +56,11 @@ h1, h2, h3, .brand {
   background: linear-gradient(90deg, var(--morning) 50%, var(--night) 50%);
   flex-shrink: 0;
 }
+.brand .brand-logo {
+  height: 26px;
+  width: auto;
+  flex-shrink: 0;
+}
 
 .container {
   max-width: 1080px;
