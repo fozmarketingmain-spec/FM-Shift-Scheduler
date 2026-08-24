@@ -120,6 +120,21 @@ h1, h2, h3, .brand {
 
 .day-cell.empty { background: transparent; border-color: transparent; }
 
+.day-cell.holiday {
+  background: #FEF6D8;
+  border-color: #EBD98C;
+}
+
+.ph-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #8A6D1A;
+  background: #F5E6A8;
+  padding: 2px 5px;
+  border-radius: 5px;
+  display: block;
+}
+
 .day-cell::before {
   content: '';
   position: absolute;
@@ -145,6 +160,10 @@ h1, h2, h3, .brand {
 .off-badge {
   font-size: 10.5px;
   color: var(--ink-soft);
+}
+.off-badge.fixed {
+  font-style: italic;
+  opacity: 0.85;
 }
 
 .fab {
@@ -242,6 +261,46 @@ h1, h2, h3, .brand {
 .badge.rejected { background: #F6DEDA; color: var(--accent-red); }
 
 .empty-state { text-align: center; color: var(--ink-soft); padding: 60px 0; }
+
+/* Summary page */
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 28px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.summary-table th, .summary-table td {
+  padding: 9px 14px;
+  text-align: left;
+  font-size: 13.5px;
+  border-bottom: 1px solid var(--line);
+}
+.summary-table th {
+  background: var(--bg);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.summary-table tr:last-child td { border-bottom: none; }
+
+.summary-form {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  max-width: 340px;
+}
+.summary-form h3 { margin-top: 0; }
+.summary-form select, .summary-form input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-size: 14px;
+  font-family: inherit;
+}
 
 @media (max-width: 640px) {
   .calendar { grid-template-columns: repeat(7, 1fr); gap: 4px; }

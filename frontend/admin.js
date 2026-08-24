@@ -26,6 +26,7 @@ async function main() {
     <div style="display:flex;align-items:center;gap:14px;font-size:14px;">
       <span>${session.me.name} · Admin</span>
       <a href="index.html" style="color:inherit;">回到日历</a>
+      <a href="summary.html" style="color:inherit;">Summary</a>
       <button class="btn ghost" onclick="logout()">登出</button>
     </div>`;
 
