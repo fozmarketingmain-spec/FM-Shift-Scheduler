@@ -26,10 +26,11 @@ async function main() {
 function renderUserArea(me) {
   userAreaEl.innerHTML = `
     <div style="display:flex;align-items:center;gap:14px;font-size:14px;">
-      <span>${me.name}${me.role === 'ADMIN' ? ' · Admin' : ''}</span>
+      <span>${me.name}${me.role === 'ADMIN' ? ' · Admin' : me.role === 'HR' ? ' · HR' : ''}</span>
       <a href="index.html" style="color:inherit;">日历</a>
       ${me.role === 'ADMIN' ? '<a href="admin.html" style="color:inherit;">审批后台</a>' : ''}
       ${me.role === 'ADMIN' ? '<a href="employees.html" style="color:inherit;">员工管理</a>' : ''}
+      ${me.role === 'ADMIN' ? '<a href="holidays.html" style="color:inherit;">假期管理</a>' : ''}
       <button class="btn ghost" onclick="logout()">登出</button>
     </div>`;
 }

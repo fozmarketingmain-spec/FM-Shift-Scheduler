@@ -28,13 +28,15 @@ async function main() {
       <a href="index.html" style="color:inherit;">回到日历</a>
       <a href="summary.html" style="color:inherit;">Summary</a>
       <a href="employees.html" style="color:inherit;">员工管理</a>
+      <a href="holidays.html" style="color:inherit;">假期管理</a>
       <button class="btn ghost" onclick="logout()">登出</button>
     </div>`;
 
   await renderRequests();
 }
 
-const typeLabel = { AL: 'AL 年假', OFF: 'Off Day (Extra)', REPLACEMENT_OFF: 'Replacement Off', SWAP: '换班', SWAP_OFF: '换 Off Day', CARRY_FORWARD: '延后 Extra Off' };
+const typeLabel = { AL: 'AL 年假', LEAVE: '请假', OFF: 'Off Day (Extra)', REPLACEMENT_OFF: 'Replacement Off', SWAP: '换班', SWAP_OFF: '换 Off Day', CARRY_FORWARD: '延后 Extra Off' };
+const leaveTypeLabel = { AL: 'AL 年假', MC: 'MC 病假', Bereavement: '丧假', Marriage: '结婚假' };
 const statusLabel = { pending: '待处理', approved: '已批准', rejected: '已拒绝' };
 
 async function renderRequests() {
@@ -54,7 +56,7 @@ async function renderRequests() {
           (r) => `
       <div class="request-card">
         <div>
-          <div><strong>${r.employee_name}</strong> — ${typeLabel[r.request_type]}
+          <div><strong>${r.employee_name}</strong> — ${r.request_type === 'LEAVE' ? (leaveTypeLabel[r.leave_type] || '请假') : typeLabel[r.request_type]}
             <span class="badge ${r.status}">${statusLabel[r.status]}</span>
           </div>
           <div class="meta">

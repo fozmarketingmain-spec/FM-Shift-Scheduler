@@ -15,7 +15,7 @@ async function main() {
   }
 
   renderUserArea(session.me);
-  employees = await apiFetch('/api/employees');
+  employees = await apiFetch('/api/employees?active=1');
   await renderCalendar();
 }
 
@@ -31,10 +31,11 @@ function renderLogin() {
 function renderUserArea(me) {
   userAreaEl.innerHTML = `
     <div style="display:flex;align-items:center;gap:14px;font-size:14px;">
-      <span>${me.name}${me.role === 'ADMIN' ? ' · Admin' : ''}</span>
+      <span>${me.name}${me.role === 'ADMIN' ? ' · Admin' : me.role === 'HR' ? ' · HR' : ''}</span>
       ${me.role === 'ADMIN' ? '<a href="admin.html" style="color:inherit;">审批后台</a>' : ''}
       <a href="summary.html" style="color:inherit;">Summary</a>
       ${me.role === 'ADMIN' ? '<a href="employees.html" style="color:inherit;">员工管理</a>' : ''}
+      ${me.role === 'ADMIN' ? '<a href="holidays.html" style="color:inherit;">假期管理</a>' : ''}
       <button class="btn ghost" onclick="logout()">登出</button>
     </div>`;
 }
@@ -93,7 +94,7 @@ async function renderCalendar() {
       ${dowLabels.map((l) => `<div class="dow">${l}</div>`).join('')}
       ${cells}
     </div>
-    <button class="fab" onclick="openRequestModal()">+ 提交申请</button>
+    ${me.role === 'ADMIN' || me.role === 'AM' ? '<button class="fab" onclick="openRequestModal()">+ 提交申请</button>' : ''}
   `;
 }
 
@@ -120,12 +121,21 @@ async function openRequestModal() {
       <div class="field">
         <label>类型</label>
         <select id="reqType" onchange="toggleRequestFields()">
-          <option value="AL">AL(年假)</option>
+          <option value="LEAVE">请假(AL / MC / 丧假 / 结婚假)</option>
           <option value="OFF" ${extraOk ? '' : 'disabled'}>Off Day — 剩 ${balances.extraOffRemaining ?? '不适用'} 天${extraOk ? '' : '(已用完/不适用)'}</option>
           <option value="REPLACEMENT_OFF" ${replOk ? '' : 'disabled'}>Replacement Off — 剩 ${balances.replacementOffRemaining} 天${replOk ? '' : '(暂无可用)'}</option>
           <option value="SWAP" ${''}>换班</option>
           <option value="SWAP_OFF">换 Off Day</option>
           <option value="CARRY_FORWARD" ${balances.extraOffRemaining ? '' : 'disabled'}>延后 Extra Off 到下月</option>
+        </select>
+      </div>
+      <div id="leaveTypeField" class="field" style="display:none;">
+        <label>请假类型</label>
+        <select id="leaveType">
+          <option value="AL">AL(年假)</option>
+          <option value="MC">MC(病假)</option>
+          <option value="Bereavement">丧假</option>
+          <option value="Marriage">结婚假</option>
         </select>
       </div>
       <div class="field">
@@ -162,10 +172,11 @@ async function openRequestModal() {
   toggleRequestFields();
 }
 
-const REASON_REQUIRED_TYPES = ['AL', 'CARRY_FORWARD', 'SWAP', 'SWAP_OFF'];
+const REASON_REQUIRED_TYPES = ['LEAVE', 'CARRY_FORWARD', 'SWAP', 'SWAP_OFF'];
 
 function toggleRequestFields() {
   const type = document.getElementById('reqType').value;
+  document.getElementById('leaveTypeField').style.display = type === 'LEAVE' ? 'block' : 'none';
   document.getElementById('assigneeField').style.display = ['OFF', 'REPLACEMENT_OFF'].includes(type) ? 'block' : 'none';
   document.getElementById('swapField').style.display = type === 'SWAP' ? 'block' : 'none';
   document.getElementById('swapOffField').style.display = type === 'SWAP_OFF' ? 'block' : 'none';
@@ -190,6 +201,9 @@ async function submitRequest() {
   }
 
   const body = { request_type, request_date, reason };
+  if (request_type === 'LEAVE') {
+    body.leave_type = document.getElementById('leaveType').value;
+  }
   if (request_type === 'SWAP') {
     body.swap_with_employee_id = Number(document.getElementById('swapWith').value);
   }

@@ -26,6 +26,7 @@ async function main() {
       <a href="index.html" style="color:inherit;">日历</a>
       <a href="admin.html" style="color:inherit;">审批后台</a>
       <a href="summary.html" style="color:inherit;">Summary</a>
+      <a href="holidays.html" style="color:inherit;">假期管理</a>
       <button class="btn ghost" onclick="logout()">登出</button>
     </div>`;
 
@@ -38,13 +39,21 @@ async function renderEmployees() {
   const rows = list
     .map(
       (e) => `
-      <tr>
-        <td>${e.name}</td>
+      <tr${e.active ? '' : ' style="opacity:0.5;"'}>
+        <td>${e.name}${e.active ? '' : ' (已停用)'}</td>
         <td class="mono">${e.slack_user_id}</td>
         <td>${e.role}</td>
         <td>${e.send_reminders ? '✅' : '—'}</td>
         <td>${e.extra_off_eligible ? '✅' : '—'}</td>
-        <td><button class="btn ghost" onclick="openEditEmployee(${e.id})">编辑</button></td>
+        <td style="display:flex;gap:6px;">
+          <button class="btn ghost" onclick="openEditEmployee(${e.id})">编辑</button>
+          ${
+            e.active
+              ? `<button class="btn ghost" onclick="toggleActive(${e.id}, false)">停用</button>`
+              : `<button class="btn ghost" onclick="toggleActive(${e.id}, true)">启用</button>`
+          }
+          <button class="btn ghost" style="color:var(--accent-red);" onclick="deleteEmployeeForever(${e.id}, '${e.name}')">彻底删除</button>
+        </td>
       </tr>`
     )
     .join('');
@@ -57,7 +66,54 @@ async function renderEmployees() {
       <tbody>${rows}</tbody>
     </table>
     <button class="fab" onclick="openAddEmployee()">+ 新增员工</button>
+    <div class="summary-form" style="margin-top:20px;">
+      <h3>手动发送提醒</h3>
+      <p style="font-size:13px;color:var(--ink-soft);margin-top:-6px;">立即发送「明天班表」提醒给所有明天有班的人,不用等到每天固定的排程时间。</p>
+      <button class="btn primary" onclick="sendRemindersNow()">立即发送明天班表提醒</button>
+    </div>
   `;
+}
+
+async function sendRemindersNow() {
+  if (!confirm('确定要现在发送「明天班表」提醒吗?会立即私讯所有明天有排班的人。')) return;
+  const res = await apiFetch('/api/admin/send-reminders-now', { method: 'POST', body: JSON.stringify({}) });
+  if (res.ok) {
+    alert(`已发送提醒给 ${res.sent} 人。`);
+  } else {
+    alert(res.error || '发送失败');
+  }
+}
+
+async function toggleActive(id, active) {
+  const action = active ? 'reactivate' : 'deactivate';
+  if (!active && !confirm('停用后这个人不能再登入、也不会出现在换班/代班选单里,但历史记录会保留。确定要停用吗?')) return;
+  const res = await apiFetch(`/api/employees/${id}/${action}`, { method: 'POST', body: JSON.stringify({}) });
+  if (res.ok) {
+    await renderEmployees();
+  } else {
+    alert(res.error || '操作失败');
+  }
+}
+
+async function deleteEmployeeForever(id, name) {
+  if (!confirm(`删除「${name}」?\n(如果他名下已经有班表/请假/OT 等历史记录,系统会先挡下来,并问你要不要连历史记录一起删掉。)`)) return;
+  const res = await apiFetch(`/api/employees/${id}`, { method: 'DELETE' });
+  if (res.ok) {
+    await renderEmployees();
+    return;
+  }
+  if (res.canForce) {
+    if (confirm(`${res.error}\n\n要不要连同他的历史记录一起彻底删除?此操作无法复原。`)) {
+      const forced = await apiFetch(`/api/employees/${id}?force=1`, { method: 'DELETE' });
+      if (forced.ok) {
+        await renderEmployees();
+      } else {
+        alert(forced.error || '删除失败');
+      }
+    }
+    return;
+  }
+  alert(res.error || '删除失败');
 }
 
 function employeeFormHtml(e) {
@@ -76,6 +132,7 @@ function employeeFormHtml(e) {
       <select id="empRole">
         <option value="AM" ${!isEdit || e.role === 'AM' ? 'selected' : ''}>AM</option>
         <option value="ADMIN" ${isEdit && e.role === 'ADMIN' ? 'selected' : ''}>ADMIN(可审批、编辑班表)</option>
+        <option value="HR" ${isEdit && e.role === 'HR' ? 'selected' : ''}>HR(仅可查看日历 & Summary)</option>
       </select>
     </div>
     <div class="field">
