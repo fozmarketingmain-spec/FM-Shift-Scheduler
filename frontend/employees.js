@@ -141,6 +141,9 @@ function employeeFormHtml(e) {
     <div class="field">
       <label><input type="checkbox" id="empExtraOff" ${isEdit && e.extra_off_eligible ? 'checked' : ''} style="width:auto;"> 享有每月 Extra Off 额度</label>
     </div>
+    <div class="field">
+      <label><input type="checkbox" id="empShowSummary" ${!isEdit || e.show_in_summary ? 'checked' : ''} style="width:auto;"> 显示在 Summary 页面(临时/代班人员建议关闭)</label>
+    </div>
   `;
 }
 
@@ -190,13 +193,14 @@ async function saveEmployee(id) {
   const role = document.getElementById('empRole').value;
   const send_reminders = document.getElementById('empReminders').checked;
   const extra_off_eligible = document.getElementById('empExtraOff').checked;
+  const show_in_summary = document.getElementById('empShowSummary').checked;
 
   if (!name || !slack_user_id) {
     alert('姓名和 Slack Member ID 都要填');
     return;
   }
 
-  const body = JSON.stringify({ name, slack_user_id, role, send_reminders, extra_off_eligible });
+  const body = JSON.stringify({ name, slack_user_id, role, send_reminders, extra_off_eligible, show_in_summary });
   const res = id
     ? await apiFetch(`/api/employees/${id}`, { method: 'PUT', body })
     : await apiFetch('/api/employees', { method: 'POST', body });
