@@ -33,7 +33,7 @@ async function main() {
       <button class="btn ghost" onclick="logout()">登出</button>
     </div>`;
 
-  employees = await apiFetch('/api/employees?active=1');
+  employees = (await apiFetch('/api/employees?active=1')).filter((e) => e.role !== 'HR');
   await renderRequests();
 }
 

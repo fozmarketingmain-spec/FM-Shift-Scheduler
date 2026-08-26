@@ -15,7 +15,7 @@ async function main() {
   }
 
   renderUserArea(session.me);
-  employees = await apiFetch('/api/employees?active=1');
+  employees = (await apiFetch('/api/employees?active=1')).filter((e) => e.role !== 'HR');
   await renderCalendar();
 }
 
