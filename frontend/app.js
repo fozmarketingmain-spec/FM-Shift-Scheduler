@@ -239,7 +239,9 @@ async function submitRequest() {
 // ---- Admin: direct per-cell editing --------------------------------------
 
 const OFF_SUBTYPES = [
-  ['AL', 'AL'],
+  ['AL', 'AL(全天)'],
+  ['AL (AM)', 'AL — 半天上午(AM)'],
+  ['AL (PM)', 'AL — 半天下午(PM)'],
   ['MC', 'MC'],
   ['Monthly', 'Monthly'],
   ['Weekly', 'Weekly'],
