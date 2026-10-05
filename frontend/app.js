@@ -15,7 +15,7 @@ async function main() {
   }
 
   renderUserArea(session.me);
-  employees = (await apiFetch('/api/employees?active=1')).filter((e) => e.role !== 'HR');
+  employees = await apiFetch('/api/employees?active=1');
   await renderCalendar();
 }
 
@@ -130,11 +130,19 @@ async function openRequestModal() {
       </div>
       <div id="leaveTypeField" class="field" style="display:none;">
         <label>请假类型</label>
-        <select id="leaveType">
+        <select id="leaveType" onchange="toggleRequestFields()">
           <option value="AL">AL(年假)</option>
           <option value="MC">MC(病假)</option>
           <option value="Bereavement">丧假</option>
           <option value="Marriage">结婚假</option>
+        </select>
+      </div>
+      <div id="halfDayField" class="field" style="display:none;">
+        <label>天数</label>
+        <select id="halfDay">
+          <option value="">全天</option>
+          <option value="AM">半天 — 上午(AM)</option>
+          <option value="PM">半天 — 下午(PM)</option>
         </select>
       </div>
       <div class="field">
@@ -173,7 +181,9 @@ const REASON_REQUIRED_TYPES = ['LEAVE', 'CARRY_FORWARD', 'SWAP', 'SWAP_OFF'];
 function toggleRequestFields() {
   const type = document.getElementById('reqType').value;
   document.getElementById('leaveTypeField').style.display = type === 'LEAVE' ? 'block' : 'none';
-  document.getElementById('assigneeNote').style.display = ['LEAVE', 'OFF', 'REPLACEMENT_OFF'].includes(type) ? 'block' : 'none';
+  const leaveType = document.getElementById('leaveType')?.value;
+  document.getElementById('halfDayField').style.display = type === 'LEAVE' && leaveType === 'AL' ? 'block' : 'none';
+  document.getElementById('assigneeNote').style.display = ['OFF', 'REPLACEMENT_OFF'].includes(type) ? 'block' : 'none';
   document.getElementById('swapField').style.display = type === 'SWAP' ? 'block' : 'none';
   document.getElementById('swapOffField').style.display = type === 'SWAP_OFF' ? 'block' : 'none';
   document.getElementById('carryDaysField').style.display = type === 'CARRY_FORWARD' ? 'block' : 'none';
@@ -199,6 +209,10 @@ async function submitRequest() {
   const body = { request_type, request_date, reason };
   if (request_type === 'LEAVE') {
     body.leave_type = document.getElementById('leaveType').value;
+    if (body.leave_type === 'AL') {
+      const halfDay = document.getElementById('halfDay').value;
+      if (halfDay) body.half_day = halfDay;
+    }
   }
   if (request_type === 'SWAP') {
     body.swap_with_employee_id = Number(document.getElementById('swapWith').value);

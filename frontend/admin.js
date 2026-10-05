@@ -33,7 +33,7 @@ async function main() {
       <button class="btn ghost" onclick="logout()">登出</button>
     </div>`;
 
-  employees = (await apiFetch('/api/employees?active=1')).filter((e) => e.role !== 'HR');
+  employees = await apiFetch('/api/employees?active=1');
   await renderRequests();
 }
 
@@ -58,14 +58,14 @@ async function renderRequests() {
           (r) => `
       <div class="request-card">
         <div>
-          <div><strong>${r.employee_name}</strong> — ${r.request_type === 'LEAVE' ? (leaveTypeLabel[r.leave_type] || '请假') : typeLabel[r.request_type]}
+          <div><strong>${r.employee_name}</strong> — ${r.request_type === 'LEAVE' ? (leaveTypeLabel[r.leave_type] || '请假') : typeLabel[r.request_type]}${r.half_day ? `(半天 · ${r.half_day})` : ''}
             <span class="badge ${r.status}">${statusLabel[r.status]}</span>
           </div>
           <div class="meta">
             日期: ${r.request_date}
             ${r.request_type === 'SWAP' ? ` → 与 ${r.swap_with_name} 对调` : ''}
             ${r.request_type === 'SWAP_OFF' ? ` → 换到 ${r.swap_date}` : ''}
-            ${['AL', 'LEAVE', 'OFF', 'REPLACEMENT_OFF'].includes(r.request_type) && r.assignee_name ? ` · 代班人: ${r.assignee_name}` : ''}
+            ${['OFF', 'REPLACEMENT_OFF'].includes(r.request_type) && r.assignee_name ? ` · 代班人: ${r.assignee_name}` : ''}
             ${r.request_type === 'CARRY_FORWARD' ? ` · 延后天数: ${r.carry_days}` : ''}
             ${r.reason ? ` · 原因: ${r.reason}` : ''}
           </div>
@@ -96,7 +96,7 @@ function setFilter(status) {
 
 // Off Day / Replacement Off need an assignee picked before they can be approved.
 function startApprove(id, requestType, requesterId) {
-  if (!['AL', 'LEAVE', 'OFF', 'REPLACEMENT_OFF'].includes(requestType)) {
+  if (!['OFF', 'REPLACEMENT_OFF'].includes(requestType)) {
     decide(id, 'approve');
     return;
   }
