@@ -33,7 +33,8 @@ async function main() {
       <button class="btn ghost" onclick="logout()">登出</button>
     </div>`;
 
-  employees = await apiFetch('/api/employees?active=1');
+  // HR accounts are read-only — exclude them from the 代班人 (assignee) picker.
+  employees = (await apiFetch('/api/employees?active=1')).filter((e) => e.role !== 'HR');
   await renderRequests();
 }
 
@@ -94,9 +95,10 @@ function setFilter(status) {
   renderRequests();
 }
 
-// Off Day / Replacement Off need an assignee picked before they can be approved.
+// AL/请假 / Off Day / Replacement Off all need an assignee (代班人) picked
+// before they can be approved — matches the backend's requirement.
 function startApprove(id, requestType, requesterId) {
-  if (!['OFF', 'REPLACEMENT_OFF'].includes(requestType)) {
+  if (!['LEAVE', 'OFF', 'REPLACEMENT_OFF'].includes(requestType)) {
     decide(id, 'approve');
     return;
   }

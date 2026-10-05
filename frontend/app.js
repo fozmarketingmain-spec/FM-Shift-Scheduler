@@ -15,7 +15,9 @@ async function main() {
   }
 
   renderUserArea(session.me);
-  employees = await apiFetch('/api/employees?active=1');
+  // HR accounts are read-only (calendar + Summary only) — exclude them from
+  // every scheduling dropdown (day-edit cells, swap-with picker, etc).
+  employees = (await apiFetch('/api/employees?active=1')).filter((e) => e.role !== 'HR');
   await renderCalendar();
 }
 
