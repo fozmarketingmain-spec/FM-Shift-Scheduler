@@ -39,7 +39,7 @@ async function main() {
 }
 
 const typeLabel = { AL: 'AL 年假', LEAVE: '请假', OFF: 'Off Day (Extra)', REPLACEMENT_OFF: 'Replacement Off', SWAP: '换班', SWAP_OFF: '换 Off Day', CARRY_FORWARD: '延后 Extra Off' };
-const leaveTypeLabel = { AL: 'AL 年假', MC: 'MC 病假', Bereavement: '丧假', Marriage: '结婚假' };
+const leaveTypeLabel = { AL: 'AL 年假', MC: 'MC 病假', Bereavement: '丧假', Marriage: '结婚假', Maternity: '产假' };
 const statusLabel = { pending: '待处理', approved: '已批准', rejected: '已拒绝' };
 
 async function renderRequests() {
