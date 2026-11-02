@@ -77,7 +77,7 @@ async function renderCalendar() {
         ${holidayName ? `<span class="ph-badge">🎉 ${holidayName}</span>` : ''}
         ${day.morning.length ? `<span class="shift-line morning">早 ${line(day.morning)}</span>` : ''}
         ${day.night.length ? `<span class="shift-line night">晚 ${line(day.night)}</span>` : ''}
-        ${day.off.map((o) => `<span class="off-badge${o.type.includes('固定') ? ' fixed' : ''}">${o.type}: ${o.name}</span>`).join('')}
+        ${groupOffByType(day.off).map((g) => `<span class="off-badge${g.type.includes('固定') ? ' fixed' : ''}">${g.type}: ${g.names.join(', ')}</span>`).join('')}
       </div>`;
   }
 
@@ -105,9 +105,49 @@ function changeMonth(delta) {
   renderCalendar();
 }
 
+// Balances are always for ONE specific month (Summary is 100% manual per month —
+// see getBalances). Which month matters depends on the date being requested, not
+// today's date, so we re-fetch whenever the date field changes and keep the
+// Off Day / Replacement Off / Carry Forward options in sync with that month.
+let currentBalances = { extraOffRemaining: null, replacementOffRemaining: 0 };
+
+function applyBalancesToModal(balances) {
+  currentBalances = balances;
+  const extraOk = balances.extraOffRemaining !== null && balances.extraOffRemaining > 0;
+  const replOk = balances.replacementOffRemaining > 0;
+
+  const offOpt = document.getElementById('optOff');
+  if (offOpt) {
+    offOpt.disabled = !extraOk;
+    offOpt.textContent = `Off Day — 剩 ${balances.extraOffRemaining ?? '不适用'} 天${extraOk ? '' : '(已用完/不适用)'}`;
+  }
+  const replOpt = document.getElementById('optReplacementOff');
+  if (replOpt) {
+    replOpt.disabled = !replOk;
+    replOpt.textContent = `Replacement Off — 剩 ${balances.replacementOffRemaining} 天${replOk ? '' : '(暂无可用)'}`;
+  }
+  const carryOpt = document.getElementById('optCarryForward');
+  if (carryOpt) carryOpt.disabled = !extraOk;
+  const carryLabel = document.getElementById('carryDaysLabel');
+  if (carryLabel) carryLabel.textContent = `要延后几天(剩 ${balances.extraOffRemaining ?? 0} 天可延)`;
+  const carryInput = document.getElementById('carryDays');
+  if (carryInput) carryInput.max = balances.extraOffRemaining ?? 0;
+}
+
+// Re-fetches balances for whichever month the currently-picked date falls in
+// (defaults to this calendar month if no date is picked yet) and refreshes
+// the Off Day / Replacement Off / Carry Forward options to match.
+async function refreshBalancesForPickedDate() {
+  const dateVal = document.getElementById('reqDate')?.value;
+  const month = dateVal ? dateVal.slice(0, 7) : new Date().toISOString().slice(0, 7);
+  const balances = await apiFetch(`/api/balances?month=${month}`);
+  applyBalancesToModal(balances);
+}
+
 async function openRequestModal() {
   const me = getSession().me;
   const balances = await apiFetch('/api/balances');
+  currentBalances = balances;
   const otherEmployees = employees.filter((e) => e.id !== me.id);
   const swapOptions = otherEmployees.map((e) => `<option value="${e.id}">${e.name}</option>`).join('');
 
@@ -120,14 +160,19 @@ async function openRequestModal() {
     <div class="modal">
       <h3>提交申请</h3>
       <div class="field">
+        <label id="dateLabel">日期</label>
+        <input type="date" id="reqDate" onchange="refreshBalancesForPickedDate()">
+      </div>
+      <p style="font-size:12px;color:var(--ink-soft);margin-top:-6px;">Off Day / Replacement Off 剩余天数跟着上面选的日期所在月份走,先选日期。</p>
+      <div class="field">
         <label>类型</label>
         <select id="reqType" onchange="toggleRequestFields()">
-          <option value="LEAVE">请假(AL / MC / 丧假 / 结婚假)</option>
-          <option value="OFF" ${extraOk ? '' : 'disabled'}>Off Day — 剩 ${balances.extraOffRemaining ?? '不适用'} 天${extraOk ? '' : '(已用完/不适用)'}</option>
-          <option value="REPLACEMENT_OFF" ${replOk ? '' : 'disabled'}>Replacement Off — 剩 ${balances.replacementOffRemaining} 天${replOk ? '' : '(暂无可用)'}</option>
+          <option value="LEAVE">请假(AL / MC / 丧假 / 结婚假 / 产假)</option>
+          <option id="optOff" value="OFF" ${extraOk ? '' : 'disabled'}>Off Day — 剩 ${balances.extraOffRemaining ?? '不适用'} 天${extraOk ? '' : '(已用完/不适用)'}</option>
+          <option id="optReplacementOff" value="REPLACEMENT_OFF" ${replOk ? '' : 'disabled'}>Replacement Off — 剩 ${balances.replacementOffRemaining} 天${replOk ? '' : '(暂无可用)'}</option>
           <option value="SWAP" ${''}>换班</option>
           <option value="SWAP_OFF">换 Off Day</option>
-          <option value="CARRY_FORWARD" ${balances.extraOffRemaining ? '' : 'disabled'}>延后 Extra Off 到下月</option>
+          <option id="optCarryForward" value="CARRY_FORWARD" ${balances.extraOffRemaining ? '' : 'disabled'}>延后 Extra Off 到下月</option>
         </select>
       </div>
       <div id="leaveTypeField" class="field" style="display:none;">
@@ -137,6 +182,7 @@ async function openRequestModal() {
           <option value="MC">MC(病假)</option>
           <option value="Bereavement">丧假</option>
           <option value="Marriage">结婚假</option>
+          <option value="Maternity">产假</option>
         </select>
       </div>
       <div id="halfDayField" class="field" style="display:none;">
@@ -146,10 +192,6 @@ async function openRequestModal() {
           <option value="AM">半天 — 上午(AM)</option>
           <option value="PM">半天 — 下午(PM)</option>
         </select>
-      </div>
-      <div class="field">
-        <label id="dateLabel">日期</label>
-        <input type="date" id="reqDate">
       </div>
       <p id="assigneeNote" class="field" style="display:none;font-size:12.5px;color:var(--ink-soft);">代班人由 Shellie 批准时指定,这里不用选。</p>
       <div id="swapField" class="field" style="display:none;">
@@ -161,7 +203,7 @@ async function openRequestModal() {
         <input type="date" id="swapOffDate">
       </div>
       <div id="carryDaysField" class="field" style="display:none;">
-        <label>要延后几天(剩 ${balances.extraOffRemaining ?? 0} 天可延)</label>
+        <label id="carryDaysLabel">要延后几天(剩 ${balances.extraOffRemaining ?? 0} 天可延)</label>
         <input type="number" id="carryDays" min="1" max="${balances.extraOffRemaining ?? 0}" value="1">
       </div>
       <div class="field">
@@ -243,6 +285,7 @@ const OFF_SUBTYPES = [
   ['AL (AM)', 'AL — 半天上午(AM)'],
   ['AL (PM)', 'AL — 半天下午(PM)'],
   ['MC', 'MC'],
+  ['Maternity', '产假'],
   ['Monthly', 'Monthly'],
   ['Weekly', 'Weekly'],
   ['Replacement', 'Compensation'],
@@ -334,3 +377,13 @@ async function saveDayEdit(dateStr) {
 }
 
 main();
+
+
+function groupOffByType(list) {
+  const map = new Map();
+  for (const o of list || []) {
+    if (!map.has(o.type)) map.set(o.type, []);
+    map.get(o.type).push(o.name);
+  }
+  return [...map].map(([type, names]) => ({ type, names }));
+}
